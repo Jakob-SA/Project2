@@ -7,7 +7,8 @@ from scipy.linalg import svd
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn import model_selection
 from dtuimldmtools import rlr_validate
-
+from sklearn.model_selection import KFold
+from sklearn.neural_network import MLPRegressor
 from matplotlib.pylab import (
     figure,
     grid,
@@ -82,7 +83,9 @@ attributeNames = ["Offset"] + list(df.drop(columns=['Channel Waiting Time']).col
 N, M = X.shape  # Number of samples and features
 
 # Cross-validation setup
-K = 5
+K = 10
+K1 = 10  # Outer loop
+K2 = 10  # Inner loop
 CV = model_selection.KFold(K, shuffle=True)
 lambdas = np.power(10.0, range(-5, 9))
 
@@ -191,6 +194,59 @@ for train_index, test_index in CV.split(X, y):
     k += 1
 
 show()
+# Initialize parameters for ANN
+hidden_layer_sizes_list = [(1,), (5,), (10,), (20,),(30,)]  # Example list of different hidden layer sizes to try
+ann_errors_train = np.empty((K, len(hidden_layer_sizes_list)))
+ann_errors_test = np.empty((K, len(hidden_layer_sizes_list)))
+
+# Start cross-validation for ANN
+k = 0
+for train_index, test_index in CV.split(X, y):
+    # Extract training and test set for current CV fold
+    X_train = X[train_index]
+    y_train = y[train_index]
+    X_test = X[test_index]
+    y_test = y[test_index]
+
+    # Standardize the data
+    scaler_ann = StandardScaler()
+    X_train = scaler_ann.fit_transform(X_train)
+    X_test = scaler_ann.transform(X_test)
+
+    # Loop over different ANN architectures
+    for idx, hidden_layer_sizes in enumerate(hidden_layer_sizes_list):
+        # Initialize and train the MLPRegressor
+        ann_model = MLPRegressor(
+            hidden_layer_sizes=hidden_layer_sizes,
+            activation='relu',
+            solver='adam',
+            max_iter=3000,
+            random_state=42
+        )
+        ann_model.fit(X_train, y_train)
+
+        # Compute the training and test errors
+        y_train_pred = ann_model.predict(X_train)
+        y_test_pred = ann_model.predict(X_test)
+        ann_errors_train[k, idx] = np.mean((y_train - y_train_pred) ** 2)
+        ann_errors_test[k, idx] = np.mean((y_test - y_test_pred) ** 2)
+
+    k += 1
+
+# Calculate mean training and test errors for ANN across all folds and configurations
+mean_ann_errors_train = np.mean(ann_errors_train, axis=0)
+mean_ann_errors_test = np.mean(ann_errors_test, axis=0)
+
+# Display results for ANN
+print("ANN Regression Results:")
+for idx, hidden_layer_sizes in enumerate(hidden_layer_sizes_list):
+    print(f"Hidden Layer Sizes: {hidden_layer_sizes}")
+    print(f"- Training Error: {mean_ann_errors_train[idx]}")
+    print(f"- Test Error: {mean_ann_errors_test[idx]}\n")
+
+
+
+
 # Display results
 print("Linear regression without feature selection:")
 print("- Training error: {0}".format(Error_train.mean()))
@@ -225,3 +281,28 @@ print(
 print("Weights in last fold:")
 for m in range(M):
     print("{:>15} {:>15}".format(attributeNames[m], np.round(w_rlr[m, -1], 2)))
+
+
+# Constructing the results table
+folds = np.arange(1, K + 1)  # Outer fold indices
+
+# Extracting optimal values and test errors
+opt_hidden_units = [hidden_layer_sizes_list[np.argmin(ann_errors_test[k, :])] for k in range(K)]
+ann_test_errors = [ann_errors_test[k, np.argmin(ann_errors_test[k, :])] for k in range(K)]
+linear_reg_test_errors = Error_test_rlr.flatten()  # Test errors for regularized linear regression
+baseline_test_errors = Error_test_nofeatures.flatten()  # Test errors for the baseline model
+opt_lambdas = [opt_lambda] * K  # The optimal lambda used across folds
+
+# Constructing the DataFrame
+results_df = pd.DataFrame({
+    "Outer Fold (i)": folds,
+    "h* (Optimal Hidden Units)": opt_hidden_units,
+    "E_test (ANN)": ann_test_errors,
+    "λ* (Optimal Lambda)": opt_lambdas,
+    "E_test (Linear Regression)": linear_reg_test_errors,
+    "E_test (Baseline)": baseline_test_errors
+})
+
+# Display the results table
+print(results_df)
+
