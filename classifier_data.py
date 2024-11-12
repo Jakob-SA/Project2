@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import pandas as pd
+from scipy import stats
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.model_selection import train_test_split
 import ann_classification, baseline_classifier, logistic_regression_classifier
@@ -43,11 +44,11 @@ label_column = 'Temporal Distribution'
 X = df_normalized.drop(columns=[label_column]).values  # Replace 'class_label' with the actual label column name
 y = df_normalized[label_column].values  # Replace 'class_label' with the actual label column name
 
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.95, stratify=y)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.9, stratify=y)
 
 regression, regression_predictions = logistic_regression_classifier.logistic_regression_cv(X, y, 10)
 
-baseline, baseline_predictions = baseline_classifier.get_baseline_table(X_train, X_test,    y_train, y_test)
+baseline, baseline_predictions = baseline_classifier.get_baseline_table(X, y, 10)
 
 ann, ann_predictions = ann_classification.get_ann_table()
 
@@ -83,21 +84,33 @@ def create_contingency_table(pred1, pred2, true_labels):
             table[1, 1] += 1
     return table
 
-
-# Perform McNemar's test
+# Perform McNemar's test and calculate confidence intervals
 def perform_mcnemar_test(pred1, pred2, true_labels):
     table = create_contingency_table(pred1, pred2, true_labels)
     result = mcnemar(table, exact=True)
-    return result.pvalue
+
+    b = table[0, 1]
+    c = table[1, 0]
+    n = b + c
+
+    # Standard error for the difference in proportions
+    se = np.sqrt((b + c) / (n * n))
+
+    # Calculate the confidence interval for the difference in proportions
+    diff = (b - c) / n
+    ci_low = diff - 1.96 * se
+    ci_high = diff + 1.96 * se
+
+    return result.pvalue, (ci_low, ci_high)
 
 # Compare logistic regression and baseline
-pvalue_reg_baseline = perform_mcnemar_test(regression_predictions, baseline_predictions, y_test)
-print(f"McNemar's test p-value (Logistic Regression vs Baseline): {pvalue_reg_baseline}")
+pvalue_reg_baseline, ci_reg_baseline = perform_mcnemar_test(regression_predictions, baseline_predictions, y_test)
+print(f"McNemar's test p-value (Logistic Regression vs Baseline): {pvalue_reg_baseline}, CI: {ci_reg_baseline}")
 
 # Compare logistic regression and ANN
-pvalue_reg_ann = perform_mcnemar_test(regression_predictions, ann_predictions, y_test)
-print(f"McNemar's test p-value (Logistic Regression vs ANN): {pvalue_reg_ann}")
+pvalue_reg_ann, ci_reg_ann = perform_mcnemar_test(regression_predictions, ann_predictions, y_test)
+print(f"McNemar's test p-value (Logistic Regression vs ANN): {pvalue_reg_ann}, CI: {ci_reg_ann}")
 
 # Compare baseline and ANN
-pvalue_baseline_ann = perform_mcnemar_test(baseline_predictions, ann_predictions, y_test)
-print(f"McNemar's test p-value (Baseline vs ANN): {pvalue_baseline_ann}")
+pvalue_baseline_ann, ci_baseline_ann = perform_mcnemar_test(baseline_predictions, ann_predictions, y_test)
+print(f"McNemar's test p-value (Baseline vs ANN): {pvalue_baseline_ann}, CI: {ci_baseline_ann}")

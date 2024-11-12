@@ -50,14 +50,8 @@ def get_ann_table():
 
     attributeNames = np.asarray(df_encoded.columns)
 
-    encoded_filename = os.path.join(current_dir, 'optical_interconnection_network_encoded.csv')
-    df_encoded.to_csv(encoded_filename, index=False)
-
     scaler = StandardScaler()
     df_normalized = pd.DataFrame(scaler.fit_transform(df_encoded), columns=df_encoded.columns)
-
-
-
 
     # Extract features and labels
     label_column = 'Temporal Distribution'
@@ -87,7 +81,7 @@ def get_ann_table():
 
 
     # Initialize parameters
-    n_replicates = 1
+    n_replicates = 2
     max_iter = 10000
     K = 10  # Number of folds in cross-validation
     hidden_units_range = range(1, 6)  # Range of hidden units to try
