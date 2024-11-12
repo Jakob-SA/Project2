@@ -1,13 +1,9 @@
-
-
-# Get the directory of the current script
 import os
-
 import numpy as np
 import pandas as pd
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.model_selection import train_test_split
-from Project2 import ann_classification, baseline_classifier, logistic_regression_classifier
+import ann_classification, baseline_classifier, logistic_regression_classifier
 
 
 current_dir = os.path.dirname(__file__)
@@ -50,6 +46,8 @@ y = df_normalized[label_column].values  # Replace 'class_label' with the actual 
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.95, stratify=y)
 
-regression = logistic_regression_classifier.logistic_regression_classifier(X_train, y_train, X_test, y_test)
+regression = logistic_regression_classifier.logistic_regression_cv(X, y, 10)
+print(regression)
 baseline = baseline_classifier.get_baseline_table(X_train, X_test,    y_train, y_test)
-ann = ann_classification.get_ann_table
+print(baseline)
+ann = ann_classification.get_ann_table()

@@ -1,7 +1,5 @@
 
-
-
-from sklearn.base import accuracy_score
+from sklearn.metrics import accuracy_score
 from sklearn.dummy import DummyClassifier
 
 
@@ -17,7 +15,6 @@ def get_baseline_table(X_train, X_test, y_train, y_test):
     accuracy = accuracy_score(y_test, y_pred)
     error_rate = 1 - accuracy
 
-    print("Error rate:", error_rate)
     error_rates = []
     for i in range(10):
         error_rates.append(error_rate)

@@ -87,10 +87,10 @@ def get_ann_table():
 
 
     # Initialize parameters
-    n_replicates = 2
+    n_replicates = 1
     max_iter = 10000
-    K = 10  # Number of folds in cross-validation
-    hidden_units_range = range(1, 10)  # Range of hidden units to try
+    K = 3  # Number of folds in cross-validation
+    hidden_units_range = range(1, 3)  # Range of hidden units to try
 
     # Initialize lists to store results
     folds = []
@@ -105,7 +105,7 @@ def get_ann_table():
 
         for i in hidden_units_range:  # Trial from 1 to 3 hidden units
             model = lambda: torch.nn.Sequential(
-                torch.nn.Linear(M, i),  # M features to H hidden units
+                torch.nn.Linear(M, out_features=i),  # M features to H hidden units
                 torch.nn.Tanh(),  # 1st transfer function
                 torch.nn.Linear(i, 1),  # H hidden units to 1 output neuron
                 torch.nn.Sigmoid(),  # final transfer function
