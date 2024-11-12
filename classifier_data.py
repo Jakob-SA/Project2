@@ -10,7 +10,6 @@ current_dir = os.path.dirname(__file__)
 
 # Construct the file path
 filename = os.path.join(current_dir, 'optical_interconnection_network.csv')
-# Load the optical_interconnection_network.csv data using the Pandas library
 df = pd.read_csv(filename, delimiter=';')
 # Delete the last five empty columns
 df = df.iloc[:, :-5]
@@ -47,7 +46,19 @@ y = df_normalized[label_column].values  # Replace 'class_label' with the actual 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.95, stratify=y)
 
 regression = logistic_regression_classifier.logistic_regression_cv(X, y, 10)
-print(regression)
+
 baseline = baseline_classifier.get_baseline_table(X_train, X_test,    y_train, y_test)
-print(baseline)
+
 ann = ann_classification.get_ann_table()
+
+combined_results = pd.DataFrame({
+        "Fold": ann["Fold"],
+        "Best Hidden Units": ann["Best Hidden Units"],
+        "Error Rate":  ann["Error Rate"],
+        "Lambda": regression["Lambda"],
+        "Error Rate": regression["Error Rate"],
+        "Baseline Error Rate": baseline
+
+    })
+
+print(combined_results)

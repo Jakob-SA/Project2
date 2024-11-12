@@ -149,6 +149,4 @@ def get_ann_table():
         "Error Rate": error_rates
     })
 
-    # Display the results table
-    print(results_df)
     return results_df

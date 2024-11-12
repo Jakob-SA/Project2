@@ -1,7 +1,7 @@
 import os
 import importlib_resources
 import matplotlib.pyplot as plt
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, classification_report
 import numpy as np
 from scipy.io import loadmat
 from sklearn.discriminant_analysis import StandardScaler
@@ -21,7 +21,7 @@ def logistic_regression_cv(X, y, K):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1/K, stratify=y)
 
     # Hyperparameter tuning for logistic regression (inner loop)
-    lambda_interval = np.logspace(-8, 2, 50)
+    lambda_interval = np.logspace(-5, 5, 50)
     best_lambda = None
     best_error_rate = float('inf')
 
@@ -40,6 +40,8 @@ def logistic_regression_cv(X, y, K):
     best_model.fit(X_train, y_train)
     y_pred = best_model.predict(X_test)
     error_rate = 1 - accuracy_score(y_test, y_pred)
+
+
 
     results.append([fold + 1, best_lambda, error_rate])  # Adjust indexing for clarity
     df = pd.DataFrame(results, columns=['Fold', 'Lambda', 'Error Rate'])
