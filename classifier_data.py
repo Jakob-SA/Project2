@@ -4,7 +4,7 @@ import pandas as pd
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn.model_selection import train_test_split
 import ann_classification, baseline_classifier, logistic_regression_classifier
-
+from statsmodels.stats.contingency_tables import mcnemar
 
 current_dir = os.path.dirname(__file__)
 
@@ -45,20 +45,59 @@ y = df_normalized[label_column].values  # Replace 'class_label' with the actual 
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.95, stratify=y)
 
-regression = logistic_regression_classifier.logistic_regression_cv(X, y, 10)
+regression, regression_predictions = logistic_regression_classifier.logistic_regression_cv(X, y, 10)
 
-baseline = baseline_classifier.get_baseline_table(X_train, X_test,    y_train, y_test)
+baseline, baseline_predictions = baseline_classifier.get_baseline_table(X_train, X_test,    y_train, y_test)
 
-ann = ann_classification.get_ann_table()
+ann, ann_predictions = ann_classification.get_ann_table()
+
+pd.options.display.float_format = '{:.4f}'.format
 
 combined_results = pd.DataFrame({
         "Fold": ann["Fold"],
         "Best Hidden Units": ann["Best Hidden Units"],
-        "Error Rate":  ann["Error Rate"],
+        "ANN Error Rate":  ann["Error Rate"],
         "Lambda": regression["Lambda"],
-        "Error Rate": regression["Error Rate"],
+        "REG Error Rate": regression["Error Rate"],
         "Baseline Error Rate": baseline
 
     })
 
 print(combined_results)
+
+
+
+
+
+# Create contingency tables for McNemar's test
+def create_contingency_table(pred1, pred2, true_labels):
+    table = np.zeros((2, 2))
+    for p1, p2, t in zip(pred1, pred2, true_labels):
+        if p1 == t and p2 == t:
+            table[0, 0] += 1
+        elif p1 == t and p2 != t:
+            table[0, 1] += 1
+        elif p1 != t and p2 == t:
+            table[1, 0] += 1
+        else:
+            table[1, 1] += 1
+    return table
+
+
+# Perform McNemar's test
+def perform_mcnemar_test(pred1, pred2, true_labels):
+    table = create_contingency_table(pred1, pred2, true_labels)
+    result = mcnemar(table, exact=True)
+    return result.pvalue
+
+# Compare logistic regression and baseline
+pvalue_reg_baseline = perform_mcnemar_test(regression_predictions, baseline_predictions, y_test)
+print(f"McNemar's test p-value (Logistic Regression vs Baseline): {pvalue_reg_baseline}")
+
+# Compare logistic regression and ANN
+pvalue_reg_ann = perform_mcnemar_test(regression_predictions, ann_predictions, y_test)
+print(f"McNemar's test p-value (Logistic Regression vs ANN): {pvalue_reg_ann}")
+
+# Compare baseline and ANN
+pvalue_baseline_ann = perform_mcnemar_test(baseline_predictions, ann_predictions, y_test)
+print(f"McNemar's test p-value (Baseline vs ANN): {pvalue_baseline_ann}")

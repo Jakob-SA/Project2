@@ -45,7 +45,7 @@ def logistic_regression_cv(X, y, K):
 
     results.append([fold + 1, best_lambda, error_rate])  # Adjust indexing for clarity
     df = pd.DataFrame(results, columns=['Fold', 'Lambda', 'Error Rate'])
-    pd.options.display.float_format = '{:.10f}'.format
 
-  return df
+
+  return df, y_pred
 

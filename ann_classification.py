@@ -89,8 +89,8 @@ def get_ann_table():
     # Initialize parameters
     n_replicates = 1
     max_iter = 10000
-    K = 3  # Number of folds in cross-validation
-    hidden_units_range = range(1, 3)  # Range of hidden units to try
+    K = 10  # Number of folds in cross-validation
+    hidden_units_range = range(1, 6)  # Range of hidden units to try
 
     # Initialize lists to store results
     folds = []
@@ -149,4 +149,4 @@ def get_ann_table():
         "Error Rate": error_rates
     })
 
-    return results_df
+    return results_df, y_test_est
