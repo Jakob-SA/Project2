@@ -21,7 +21,7 @@ def logistic_regression_cv(X, y, K):
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1/K, stratify=y)
 
     # Hyperparameter tuning for logistic regression (inner loop)
-    lambda_interval = np.logspace(-5, 5, 50)
+    lambda_interval = np.logspace(-6, 2, 50)
     best_lambda = None
     best_error_rate = float('inf')
 
