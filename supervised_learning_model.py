@@ -4,6 +4,7 @@ import pandas as pd
 from dtuimldmtools import similarity
 import matplotlib.pyplot as plt
 from scipy.linalg import svd
+from scipy import stats
 from sklearn.discriminant_analysis import StandardScaler
 from sklearn import model_selection
 from dtuimldmtools import rlr_validate
@@ -41,11 +42,28 @@ def summary_stats(data):
     })
     return summary_df
 
+def compare_models (y_true, y_pred_modelA,y_pred_modelB, alpha = 0.05):
+    error_modelA = (y_true - y_pred_modelA) ** 2
+    error_modelB = (y_true - y_pred_modelB) ** 2
+    z_i = error_modelA - error_modelB
+    n = len(z_i)
+    
+    mean_diff = np.mean(z_i)
+    std_diff = np.sqrt(np.sum((z_i - mean_diff) ** 2) / (n * (n - 1)))
+    dof = n - 1
+    t_critical = stats.t.ppf(1 - alpha/2, dof)
+    ci = (mean_diff - t_critical * std_diff, mean_diff + t_critical * std_diff)
+    t_stat = mean_diff / std_diff
+    p_value = 2 * stats.t.cdf(-abs(t_stat), dof)
+    
+    return mean_diff, ci, p_value
+
+
 # Get the directory of the current script
 current_dir = os.path.dirname(__file__)
 
 # Construct the file path
-filename = os.path.join(current_dir, 'optical_interconnection_network_encoded.csv')
+filename = os.path.join(current_dir, 'optical_interconnection_network_encoded_1.csv')
 # Load the optical_interconnection_network.csv data using the Pandas library
 df = pd.read_csv(filename, delimiter=',')
 
@@ -79,13 +97,12 @@ print(y)
 # Add offset attribute (bias term)
 X = np.concatenate((np.ones((X.shape[0], 1)), X.values), axis=1)
 
-attributeNames = ["Offset"] + list(df.drop(columns=['Channel Waiting Time']).columns)
+attributeNames = ["Offset"] + list(df_subframe.drop(columns=['Channel Waiting Time']).columns)
 N, M = X.shape  # Number of samples and features
 
 # Cross-validation setup
 K = 10
-K1 = 10  # Outer loop
-K2 = 10  # Inner loop
+
 CV = model_selection.KFold(K, shuffle=True)
 lambdas = np.power(10.0, range(-5, 9))
 
@@ -290,7 +307,7 @@ folds = np.arange(1, K + 1)  # Outer fold indices
 opt_hidden_units = [hidden_layer_sizes_list[np.argmin(ann_errors_test[k, :])] for k in range(K)]
 ann_test_errors = [ann_errors_test[k, np.argmin(ann_errors_test[k, :])] for k in range(K)]
 linear_reg_test_errors = Error_test_rlr.flatten()  # Test errors for regularized linear regression
-baseline_test_errors = Error_test_nofeatures.flatten()  # Test errors for the baseline model
+baseline_test_errors = Error_test_nofeatures.reshape(-1)
 opt_lambdas = [opt_lambda] * K  # The optimal lambda used across folds
 
 # Constructing the DataFrame
@@ -306,3 +323,52 @@ results_df = pd.DataFrame({
 # Display the results table
 print(results_df)
 
+
+# Perform statistical testing between Regularized Linear Regression, ANN, and Baseline models
+
+y_true = y  # Ground truth values
+y_pred_lr = np.mean(Error_test_rlr)  # Mean test error for Linear Regression
+y_pred_ann = np.mean(ann_test_errors)  # Mean test error for ANN
+y_pred_baseline = np.mean(baseline_test_errors)  # Mean test error for Baseline
+
+# ANN vs Baseline Comparison
+mean_diff_ann_V_baseline, ci_ann_V_baseline, p_value_ann_V_baseline = compare_models(y_true, y_pred_ann, y_pred_baseline, alpha=0.05)
+
+print("\nStatistical Comparison between ANN and Baseline:")
+print(f"Mean Difference: {mean_diff_ann_V_baseline:.4f}")
+print(f"95% Confidence Interval: ({ci_ann_V_baseline[0]:.4f}, {ci_ann_V_baseline[1]:.4f})")
+print(f"P-value: {p_value_ann_V_baseline:.6f}")
+
+# Interpret the p-value for ANN vs Baseline
+if p_value_ann_V_baseline < 0.05:
+    print("The difference between models is statistically significant.")
+else:
+    print("The difference between models is not statistically significant.")
+
+# LR vs Baseline Comparison
+mean_diff_lr_V_baseline, ci_lr_V_baseline, p_value_lr_V_baseline = compare_models(y_true, y_pred_lr, y_pred_baseline, alpha=0.05)
+
+print("\nStatistical Comparison between Linear Regression and Baseline:")
+print(f"Mean Difference: {mean_diff_lr_V_baseline:.4f}")
+print(f"95% Confidence Interval: ({ci_lr_V_baseline[0]:.4f}, {ci_lr_V_baseline[1]:.4f})")
+print(f"P-value: {p_value_lr_V_baseline:.6f}")
+
+# Interpret the p-value for LR vs Baseline
+if p_value_lr_V_baseline < 0.05:
+    print("The difference between models is statistically significant.")
+else:
+    print("The difference between models is not statistically significant.")
+
+# ANN vs LR Comparison
+mean_diff_ann_V_lr, ci_ann_V_lr, p_value_ann_V_lr = compare_models(y_true, y_pred_ann, y_pred_lr, alpha=0.05)
+
+print("\nStatistical Comparison between ANN and Linear Regression:")
+print(f"Mean Difference: {mean_diff_ann_V_lr:.4f}")
+print(f"95% Confidence Interval: ({ci_ann_V_lr[0]:.4f}, {ci_ann_V_lr[1]:.4f})")
+print(f"P-value: {p_value_ann_V_lr:.6f}")
+
+# Interpret the p-value for ANN vs LR
+if p_value_ann_V_lr < 0.05:
+    print("The difference between models is statistically significant.")
+else:
+    print("The difference between models is not statistically significant.")
